@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>ChirpNest</title>
+  <style>
+    /* General styling */
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f0f2f5;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 40px auto;
+      background-color: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      color: #3b5998;
+      text-align: center;
+    }
+
+    #userSection {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+
+    #userSection img {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    #usernameDisplay {
+      font-weight: bold;
+      color: #3b5998;
+    }
+
+    #userDropdown {
+      display: none;
+      position: absolute;
+      background-color: white;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      padding: 10px;
+      top: 55px;
+      right: 0;
+      z-index: 10;
+    }
+
+    #userDropdown a, #userDropdown button {
+      display: block;
+      width: 100%;
+      margin: 5px 0;
+      text-align: left;
+      background-color: #3b5998;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      padding: 10px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    #userDropdown button:hover, #userDropdown a:hover {
+      background-color: #2d4373;
+    }
+
+    #postForm {
+      margin-top: 20px;
+    }
+
+    textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #cccccc;
+      border-radius: 5px;
+      box-sizing: border-box;
+      margin-bottom: 10px;
+      resize: vertical;
+      font-family: inherit;
+      font-size: 14px;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      background-color: #3b5998;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background-color: #2d4373;
+    }
+
+    .post {
+      border: 1px solid #cccccc;
+      border-radius: 5px;
+      padding: 10px;
+      margin: 10px 0;
+      background-color: #f9f9f9;
+    }
+
+    .post-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .post-header img {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .post-content {
+      white-space: pre-wrap;
+      font-size: 15px;
+    }
+
+    .comments {
+      margin-top: 10px;
+      border-top: 1px solid #ddd;
+      padding-top: 10px;
+    }
+
+    .comment {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+      align-items: flex-start;
+    }
+
+    .comment img {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-top: 2px;
+    }
+
+    .comment-content {
+      background: #e1e8ff;
+      padding: 6px 10px;
+      border-radius: 15px;
+      max-width: 90%;
+      white-space: pre-wrap;
+      font-size: 14px;
+    }
+
+    .comment-author {
+      font-weight: bold;
+      color: #3b5998;
+      margin-right: 6px;
+    }
+
+    .toggle-comments-btn {
+      margin-top: 8px;
+      background: transparent;
+      border: none;
+      color: #3b5998;
+      cursor: pointer;
+      font-weight: bold;
+      padding: 0;
+    }
+
+    .comment-input {
+      margin-top: 6px;
+      width: 100%;
+      padding: 8px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      font-family: inherit;
+      font-size: 14px;
+      resize: vertical;
+      box-sizing: border-box;
+    }
+
+    .comment-post-btn {
+      margin-top: 6px;
+      width: auto;
+      padding: 6px 14px;
+      border-radius: 5px;
+      font-weight: bold;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>ChirpNest</h1>
+
+    <div id="userSection" title="User Menu">
+      <img id="profilePic" src="" alt="Profile Picture" style="display:none" />
+      <span id="usernameDisplay"></span> ▼
+      <div id="userDropdown">
+        <a href="account.html">Account</a>
+        <button id="logoutBtn">Logout</button>
+      </div>
+    </div>
+
+    <div id="postForm" style="display:none;">
+      <h3>Create a Post</h3>
+      <textarea id="postContent" placeholder="Write something... Use /giphy &lt;term&gt;"></textarea>
+      <button id="submitPost">Post</button>
+    </div>
+
+    <h2>Posts</h2>
+    <div id="posts"></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-auth.js";
+    import { getDatabase, ref, push, set, onChildAdded, query, orderByChild, get } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBFZ9QYWD_zoSrv2e13o2rW0J7UkvT8__M",
+      authDomain: "idknnnnn-c5b72.firebaseapp.com",
+      databaseURL: "https://idknnnnn-c5b72-default-rtdb.firebaseio.com",
+      projectId: "idknnnnn-c5b72",
+      storageBucket: "idknnnnn-c5b72.appspot.com",
+      messagingSenderId: "595227295310",
+      appId: "1:595227295310:web:a6210e0544c44446394d1f",
+      measurementId: "G-PDSR84JGQX"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+
+    const userSection = document.getElementById('userSection');
+    const usernameDisplay = document.getElementById('usernameDisplay');
+    const userDropdown = document.getElementById('userDropdown');
+    const profilePic = document.getElementById('profilePic');
+    const postForm = document.getElementById('postForm');
+    const postsContainer = document.getElementById('posts');
+
+    // Escape to prevent HTML injection in posts/comments
+    function escapeHtml(text) {
+      return text.replace(/[&<>"']/g, m => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      })[m]);
+    }
+
+    // Function to detect if content is /giphy command
+    async function fetchGiphyUrl(term) {
+      if (!term) return null;
+      try {
+        const apiKey = "dc6zaTOxFJmzC"; // public beta key
+        const res = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=${apiKey}&q=${encodeURIComponent(term)}&limit=1`);
+        const json = await res.json();
+        if (json.data && json.data.length > 0) {
+          return json.data[0].images.fixed_height.url;
+        }
+        return null;
+      } catch {
+        return null;
+      }
+    }
+
+    // Render a post
+    async function renderPost(post, postId) {
+      // Clear old post if exists to prevent duplicates
+      const oldPost = document.getElementById('post-' + postId);
+      if (oldPost) oldPost.remove();
+
+      const postDiv = document.createElement('div');
+      postDiv.className = 'post';
+      postDiv.id = 'post-' + postId;
+
+      // Determine if post.content starts with /giphy
+      let contentHtml = '';
+      if (post.content.startsWith('/giphy ')) {
+        const term = post.content.substring(7).trim();
+        const url = await fetchGiphyUrl(term);
+        if (url) {
+          contentHtml = `<img src="${url}" alt="GIF" style="max-width: 100%; border-radius: 8px;" />`;
+        } else {
+          contentHtml = `<i>Could not load GIF for "${escapeHtml(term)}"</i>`;
+        }
+      } else {
+        contentHtml = escapeHtml(post.content);
+      }
+
+      // Get profile picture for author or default
+      const userPic = post.profilePic || 'https://www.gravatar.com/avatar/?d=mp&f=y'; 
+
+      postDiv.innerHTML = `
+        <div class="post-header">
+          <img src="${userPic}" alt="User pic" />
+          <strong>${escapeHtml(post.author)}</strong>
+        </div>
+        <div class="post-content">${contentHtml}</div>
+
+        <button class="toggle-comments-btn">Show Replies</button>
+        <div class="comments" id="comments-${postId}" style="display:none; margin-top:10px;"></div>
+
+        <textarea class="comment-input" placeholder="Write a comment... Use /giphy &lt;term&gt;"></textarea>
+        <button class="comment-post-btn">Post Comment</button>
+      `;
+
+      postsContainer.insertBefore(postDiv, postsContainer.firstChild);
+
+      // Toggle comments dropdown
+      const toggleBtn = postDiv.querySelector('.toggle-comments-btn');
+      const commentsDiv = postDiv.querySelector('.comments');
+
+      toggleBtn.addEventListener('click', () => {
+        if (commentsDiv.style.display === 'none') {
+          commentsDiv.style.display = 'block';
+          toggleBtn.textContent = 'Hide Replies';
+        } else {
+          commentsDiv.style.display = 'none';
+          toggleBtn.textContent = 'Show Replies';
+        }
+      });
+
+      // Load comments for this post
+      const commentsRef = ref(db, `comments/${postId}`);
+      commentsDiv.innerHTML = 'Loading comments...';
+      get(commentsRef).then(snapshot => {
+        commentsDiv.innerHTML = '';
+        if (snapshot.exists()) {
+          const commentsData = snapshot.val();
+          for (const commentId in commentsData) {
+            renderComment(commentsData[commentId], commentsDiv);
+          }
+        }
+      }).catch(() => {
+        commentsDiv.innerHTML = '<i>Failed to load comments.</i>';
+      });
+
+      // Listen for new comments realtime
+      onChildAdded(commentsRef, snapshot => {
+        const comment = snapshot.val();
+        renderComment(comment, commentsDiv);
+      });
+
+      // Comment post button
+      const commentInput = postDiv.querySelector('.comment-input');
+      const commentPostBtn = postDiv.querySelector('.comment-post-btn');
+
+      commentPostBtn.addEventListener('click', async () => {
+        const user = auth.currentUser;
+        if (!user) {
+          alert("You must be logged in to comment!");
+          return;
+        }
+        const text = commentInput.value.trim();
+        if (!text) return alert("Comment can't be empty!");
+        commentPostBtn.disabled = true;
+
+        let commentContentHtml = '';
+        if (text.startsWith('/giphy ')) {
+          const term = text.substring(7).trim();
+          const url = await fetchGiphyUrl(term);
+          if (url) {
+            commentContentHtml = `<img src="${url}" alt="GIF" style="max-width: 100%; border-radius: 8px;" />`;
+          } else {
+            commentContentHtml = `<i>Could not load GIF for "${escapeHtml(term)}"</i>`;
+          }
+        } else {
+          commentContentHtml = escapeHtml(text);
+        }
+
+        // Get user data from DB for profile pic & username
+        const userRef = ref(db, 'users/' + user.uid);
+        get(userRef).then(userSnap => {
+          const userData = userSnap.exists() ? userSnap.val() : {};
+          const commentData = {
+            author: userData.username || user.email,
+            profilePic: userData.profilePic || 'https://www.gravatar.com/avatar/?d=mp&f=y',
+            content: text,
+            timestamp: Date.now()
+          };
+          // Push comment to database
+          const newCommentRef = push(ref(db, `comments/${postId}`));
+          set(newCommentRef, commentData).then(() => {
+            commentInput.value = '';
+            commentPostBtn.disabled = false;
+            // Show comments area automatically on new comment
+            commentsDiv.style.display = 'block';
+            toggleBtn.textContent = 'Hide Replies';
+          });
+        });
+      });
+    }
+
+    // Render a single comment inside a comments container
+    async function renderComment(comment, commentsDiv) {
+      // Create comment container
+      const commentDiv = document.createElement('div');
+      commentDiv.className = 'comment';
+
+      // Determine if comment.content is /giphy
+      let commentHtml = '';
+      if (comment.content.startsWith('/giphy ')) {
+        const term = comment.content.substring(7).trim();
+        const url = await fetchGiphyUrl(term);
+        if (url) {
+          commentHtml = `<img src="${url}" alt="GIF" style="max-width: 100%; border-radius: 8px;" />`;
+        } else {
+          commentHtml = `<i>Could not load GIF for "${escapeHtml(term)}"</i>`;
+        }
+      } else {
+        commentHtml = escapeHtml(comment.content);
+      }
+
+      const userPic = comment.profilePic || 'https://www.gravatar.com/avatar/?d=mp&f=y';
+
+      commentDiv.innerHTML = `
+        <img src="${userPic}" alt="User pic" />
+        <div class="comment-content"><strong class="comment-author">${escapeHtml(comment.author)}:</strong> ${commentHtml}</div>
+      `;
+
+      commentsDiv.appendChild(commentDiv);
+    }
+
+    // Load posts from database and render
+    function loadPosts() {
+      const postsRef = query(ref(db, 'posts'), orderByChild('timestamp'));
+      postsContainer.innerHTML = 'Loading posts...';
+
+      // Clear and listen for posts realtime
+      postsContainer.innerHTML = '';
+      onChildAdded(postsRef, snapshot => {
+        const post = snapshot.val();
+        const postId = snapshot.key;
+        renderPost(post, postId);
+      });
+    }
+
+    // Setup user info UI after login
+    async function setupUserUI(user) {
+      if (!user) {
+        usernameDisplay.textContent = '';
+        profilePic.style.display = 'none';
+        postForm.style.display = 'none';
+        return;
+      }
+      // Get user info from database
+      const userRef = ref(db, 'users/' + user.uid);
+      const snapshot = await get(userRef);
+      const userData = snapshot.exists() ? snapshot.val() : {};
+
+      usernameDisplay.textContent = userData.username || user.email;
+      if (userData.profilePic) {
+        profilePic.src = userData.profilePic;
+        profilePic.style.display = 'inline-block';
+      } else {
+        profilePic.style.display = 'none';
+      }
+      postForm.style.display = 'block';
+    }
+
+    // Logout button functionality
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      signOut(auth).then(() => {
+        window.location.href = 'login.html';
+      });
+    });
+
+    // Toggle user dropdown on clicking userSection
+    userSection.addEventListener('click', e => {
+      e.stopPropagation();
+      userDropdown.style.display = userDropdown.style.display === 'block' ? 'none' : 'block';
+    });
+
+    // Close dropdown if click outside
+    document.body.addEventListener('click', () => {
+      userDropdown.style.display = 'none';
+    });
+
+    // Post submission
+    document.getElementById('submitPost').addEventListener('click', async () => {
+      const user = auth.currentUser;
+      if (!user) {
+        alert("You must be logged in to post!");
+        return;
+      }
+      const content = document.getElementById('postContent').value.trim();
+      if (!content) {
+        alert("Post content cannot be empty.");
+        return;
+      }
+
+      // Get user info from DB for profile pic and username
+      const userRef = ref(db, 'users/' + user.uid);
+      const snapshot = await get(userRef);
+      const userData = snapshot.exists() ? snapshot.val() : {};
+
+      const postData = {
+        author: userData.username || user.email,
+        profilePic: userData.profilePic || 'https://www.gravatar.com/avatar/?d=mp&f=y',
+        content: content,
+        timestamp: Date.now()
+      };
+
+      const newPostRef = push(ref(db, 'posts'));
+      await set(newPostRef, postData);
+      document.getElementById('postContent').value = '';
+    });
+
+    // Auth state listener
+    onAuthStateChanged(auth, user => {
+      if (user) {
+        setupUserUI(user);
+        loadPosts();
+      } else {
+        // Not logged in, redirect to login page
+        window.location.href = 'login.html';
+      }
+    });
+  </script>
+</body>
+</html>
